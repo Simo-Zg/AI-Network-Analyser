@@ -15,6 +15,7 @@
         input, button {
             padding: 10px;
             margin: 5px;
+            width: 220px;
         }
         input {
             background: #1e293b;
@@ -39,17 +40,22 @@
 
 <h2>AI Network Attack Detector</h2>
 
-<!-- Manual input -->
+<!-- INPUTS -->
 <input id="flow_duration" placeholder="Flow Duration"><br>
 <input id="packet_count" placeholder="Packet Count"><br>
 <input id="iat_mean" placeholder="IAT Mean"><br>
 <input id="iat_std" placeholder="IAT Std"><br>
 
+<input id="packet_length_mean" placeholder="Packet Length Mean"><br>
+<input id="packet_length_std" placeholder="Packet Length Std"><br>
+<input id="flow_bytes" placeholder="Flow Bytes/s"><br>
+<input id="flow_packets" placeholder="Flow Packets/s"><br>
+
 <button onclick="predict()">Analyze</button>
 
 <br><br>
 
-<!-- CSV upload -->
+<!-- CSV -->
 <input type="file" id="fileInput">
 <button onclick="uploadCSV()">Upload CSV</button>
 
@@ -59,15 +65,24 @@
 
 <script>
 
+let chart;
+
+// =========================
+// MANUAL PREDICTION
+// =========================
 function predict() {
 
     let f = parseFloat(flow_duration.value);
     let p = parseFloat(packet_count.value);
     let m = parseFloat(iat_mean.value);
     let s = parseFloat(iat_std.value);
+    let plm = parseFloat(packet_length_mean.value);
+    let pls = parseFloat(packet_length_std.value);
+    let fb = parseFloat(flow_bytes.value);
+    let fp = parseFloat(flow_packets.value);
 
-    if (isNaN(f) || isNaN(p) || isNaN(m) || isNaN(s)) {
-        alert("Enter valid numbers");
+    if ([f,p,m,s,plm,pls,fb,fp].some(isNaN)) {
+        alert("Enter all values correctly");
         return;
     }
 
@@ -78,7 +93,11 @@ function predict() {
             flow_duration: f,
             packet_count: p,
             iat_mean: m,
-            iat_std: s
+            iat_std: s,
+            packet_length_mean: plm,
+            packet_length_std: pls,
+            flow_bytes: fb,
+            flow_packets: fp
         })
     })
     .then(res => res.json())
@@ -96,8 +115,17 @@ function predict() {
     });
 }
 
+// =========================
+// CSV UPLOAD
+// =========================
 function uploadCSV() {
+
     let file = document.getElementById("fileInput").files[0];
+
+    if (!file) {
+        alert("Select a CSV file first");
+        return;
+    }
 
     let formData = new FormData();
     formData.append("file", file);
@@ -117,13 +145,22 @@ function uploadCSV() {
     });
 }
 
+// =========================
+// CHART
+// =========================
 function showChart(summary) {
-    new Chart(document.getElementById("chart"), {
+
+    if (chart) {
+        chart.destroy();
+    }
+
+    chart = new Chart(document.getElementById("chart"), {
         type: "pie",
         data: {
             labels: Object.keys(summary),
             datasets: [{
-                data: Object.values(summary)
+                data: Object.values(summary),
+                backgroundColor: ["#22c55e", "#ef4444"]
             }]
         }
     });

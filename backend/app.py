@@ -1,116 +1,127 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import joblib
-import numpy as np
 import pandas as pd
+import joblib
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-model = joblib.load("model.pkl")
-scaler = joblib.load("scaler.pkl")
-
 # =========================
-# HOME
+# LOAD MODEL
+# =========================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+model = joblib.load(os.path.join(BASE_DIR, "model.pkl"))
+scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
+
+FEATURES = [
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Flow Bytes/s",
+    "Flow Packets/s"
+]
+
+print("Scaler expects:", scaler.n_features_in_)
+
 # =========================
 @app.route("/")
 def home():
-    return "API running"
+    return "AI Network Analyzer API running"
 
 # =========================
-# EXPLANATION
-# =========================
-def explain_attack(pred):
-    return {
-        "BENIGN": "Normal traffic",
-        "DoS": "Flooding attack",
-        "DDoS": "Distributed flooding",
-        "PortScan": "Scanning ports",
-        "Bot": "Botnet behavior"
-    }.get(pred, "Unknown")
+def explain(pred):
+    if pred == "BENIGN":
+        return "Normal traffic behavior detected"
+    return "DDoS attack behavior detected"
 
-# =========================
-# SUGGESTION
-# =========================
-def get_suggestion(pred):
+def suggest(pred):
     if pred == "BENIGN":
         return "No action needed"
-    elif pred in ["DoS", "DDoS"]:
-        return "Block IP / rate limit"
-    elif pred == "PortScan":
-        return "Enable IDS / block scanner"
-    elif pred == "Bot":
-        return "Isolate machine"
-    return "Monitor"
+    return "Block suspicious IP and apply rate limiting"
 
 # =========================
 # SINGLE PREDICTION
 # =========================
 @app.route("/predict", methods=["POST"])
 def predict():
-    try:
-        data = request.json
 
-        features = np.array([[
-            float(data["flow_duration"]),
-            float(data["packet_count"]),
-            float(data["iat_mean"]),
-            float(data["iat_std"])
-        ]])
+    data = request.json
 
-        features = scaler.transform(features)
+    df = pd.DataFrame([[
+        data["flow_duration"],
+        data["packet_count"],
+        data["iat_mean"],
+        data["iat_std"],
+        data["packet_length_mean"],
+        data["packet_length_std"],
+        data["flow_bytes"],
+        data["flow_packets"]
+    ]], columns=FEATURES)
 
-        pred = model.predict(features)[0]
-        conf = float(max(model.predict_proba(features)[0]))
+    X = scaler.transform(df)
 
-        return jsonify({
-            "prediction": str(pred),
-            "confidence": round(conf, 3),
-            "explanation": explain_attack(pred),
-            "suggestion": get_suggestion(pred)
-        })
+    pred = model.predict(X)[0]
+    proba = model.predict_proba(X)[0]
 
-    except Exception as e:
-        return jsonify({"error": str(e)})
+    return jsonify({
+        "prediction": str(pred),
+        "confidence": round(float(max(proba)), 3),
+        "probabilities": proba.tolist(),
+        "explanation": explain(pred),
+        "suggestion": suggest(pred)
+    })
 
 # =========================
-# CSV ANALYSIS
+# CSV PREDICTION
 # =========================
 @app.route("/predict_csv", methods=["POST"])
 def predict_csv():
-    try:
-        file = request.files["file"]
-        df = pd.read_csv(file)
 
-        df.columns = df.columns.str.strip()
+    file = request.files["file"]
 
-        df = df.rename(columns={
-            "Flow Duration": "flow_duration",
-            "Total Fwd Packets": "packet_count",
-            "Flow IAT Mean": "iat_mean",
-            "Flow IAT Std": "iat_std"
-        })
+    df = pd.read_csv(file)
+    df.columns = df.columns.str.strip()
 
-        df = df[["flow_duration","packet_count","iat_mean","iat_std"]]
-        df = df.fillna(0)
+    df = df.replace([float("inf"), -float("inf")], 0)
+    df = df.dropna()
 
-        X = scaler.transform(df)
-        preds = model.predict(X)
+    X = scaler.transform(df[FEATURES])
 
-        df["prediction"] = preds
+    preds = model.predict(X)
 
-        summary = df["prediction"].value_counts().to_dict()
+    df["prediction"] = preds
 
-        return jsonify({
-            "total_flows": len(df),
-            "summary": summary
-        })
+    summary = df["prediction"].value_counts().to_dict()
 
-    except Exception as e:
-        return jsonify({"error": str(e)})
+    return jsonify({
+        "total_flows": len(df),
+        "summary": summary
+    })
 
 # =========================
-# RUN
+# REAL DATASET TEST
+# =========================
+@app.route("/test_real")
+def test_real():
+
+    df = pd.read_csv("data.csv")
+    df.columns = df.columns.str.strip()
+
+    row = df[df["Label"].str.contains("DDoS")].iloc[0]
+
+    X = scaler.transform(pd.DataFrame([row[FEATURES]]))
+
+    pred = model.predict(X)[0]
+
+    return jsonify({
+        "real_row_prediction": str(pred)
+    })
+
 # =========================
 if __name__ == "__main__":
     app.run(debug=True)
