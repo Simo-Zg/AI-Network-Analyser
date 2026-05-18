@@ -1,5 +1,21 @@
 venv/
 .venv/
 __pycache__/
-*.pkl
+.pytest_cache/
+.env
+node_modules/
+npm-debug.log*
+uploads/
+exports/
+mongo_data/
+*.log
+
+# Large local datasets / generated artifacts
+ml_service/data/raw/*
+!ml_service/data/raw/.gitkeep
+ml_service/data/processed/*
+!ml_service/data/processed/.gitkeep
+ml_service/models/*.joblib
+ml_service/models/*.pkl
+backend/*.pkl
 *.zip

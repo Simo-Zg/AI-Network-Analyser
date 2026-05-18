@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Network Analyzer</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script defer src="js/api.js"></script>
+  <script defer src="js/dashboard.js"></script>
+  <script defer src="js/liveCapture.js"></script>
+  <script defer src="js/csvAnalysis.js"></script>
+  <script defer src="js/pcapAnalysis.js"></script>
+  <script defer src="js/alerts.js"></script>
+  <script defer src="js/modelInfo.js"></script>
+  <script defer src="js/settings.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">AN</div>
+        <div>
+          <div class="brand-name">AI Network Analyzer</div>
+          <div class="brand-subtitle">Local IDS Workbench</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="live">Live Capture</button>
+        <button class="nav-item" data-view="csv">CSV Analysis</button>
+        <button class="nav-item" data-view="pcap">PCAP Analysis</button>
+        <button class="nav-item" data-view="alerts">Alerts</button>
+        <button class="nav-item" data-view="model">Model Info</button>
+        <button class="nav-item" data-view="settings">Settings</button>
+      </nav>
+      <div class="sidebar-status">
+        <div class="status-row">
+          <span>API</span>
+          <span id="apiStatus" class="pill muted">checking</span>
+        </div>
+        <div class="status-row">
+          <span>MongoDB</span>
+          <span id="mongoStatus" class="pill muted">unknown</span>
+        </div>
+        <div class="status-row">
+          <span>Model</span>
+          <span id="modelStatus" class="pill muted">unknown</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <h1 id="viewTitle">Dashboard</h1>
+          <p id="viewSubtitle">Flow-based ML detection, alert triage, and SIEM export.</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="refreshButton" class="icon-button" title="Refresh">Refresh</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view active-view">
+        <div class="metric-grid">
+          <article class="metric-card"><span>Total flows</span><strong id="metricTotalFlows">0</strong></article>
+          <article class="metric-card"><span>Total alerts</span><strong id="metricTotalAlerts">0</strong></article>
+          <article class="metric-card"><span>Malicious flows</span><strong id="metricMalicious">0</strong></article>
+          <article class="metric-card"><span>Benign flows</span><strong id="metricBenign">0</strong></article>
+          <article class="metric-card"><span>Capture status</span><strong id="metricCapture">stopped</strong></article>
+          <article class="metric-card"><span>Top attack</span><strong id="metricTopAttack">none</strong></article>
+          <article class="metric-card"><span>High severity</span><strong id="metricHighSeverity">0</strong></article>
+        </div>
+        <div class="chart-grid">
+          <section class="panel"><h2>Attack Distribution</h2><canvas id="attackChart" height="170"></canvas></section>
+          <section class="panel"><h2>Alerts Over Time</h2><canvas id="timeChart" height="170"></canvas></section>
+          <section class="panel"><h2>Severity Distribution</h2><canvas id="severityChart" height="170"></canvas></section>
+          <section class="panel"><h2>Source Type</h2><canvas id="sourceTypeChart" height="170"></canvas></section>
+        </div>
+        <div class="two-column">
+          <section class="panel">
+            <h2>Recent Alerts</h2>
+            <div class="table-wrap"><table id="recentAlertsTable"></table></div>
+          </section>
+          <section class="panel">
+            <h2>Recent Capture Sessions</h2>
+            <div class="table-wrap"><table id="captureSessionsTable"></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="live" class="view">
+        <div class="panel form-panel">
+          <div class="form-grid">
+            <label>Interface<input id="captureInterface" placeholder="Wi-Fi, Ethernet, eth0"></label>
+            <label>Window seconds<input id="captureWindow" type="number" min="1" value="5"></label>
+          </div>
+          <div class="button-row">
+            <button id="startCaptureButton" class="primary-button">Start Capture</button>
+            <button id="stopCaptureButton" class="danger-button">Stop Capture</button>
+          </div>
+          <div id="captureMessage" class="status-message">Live capture is stopped.</div>
+        </div>
+        <div class="metric-grid compact">
+          <article class="metric-card"><span>Status</span><strong id="liveStatus">stopped</strong></article>
+          <article class="metric-card"><span>Packets</span><strong id="livePackets">0</strong></article>
+          <article class="metric-card"><span>Flows</span><strong id="liveFlows">0</strong></article>
+          <article class="metric-card"><span>Alerts</span><strong id="liveAlerts">0</strong></article>
+        </div>
+        <section class="panel">
+          <h2>Real-Time Alerts</h2>
+          <div class="table-wrap"><table id="liveAlertsTable"></table></div>
+        </section>
+      </section>
+
+      <section id="csv" class="view">
+        <section class="panel form-panel">
+          <div class="upload-row">
+            <input id="csvFile" type="file" accept=".csv">
+            <button id="analyzeCsvButton" class="primary-button">Analyze CSV</button>
+          </div>
+          <div id="csvStatus" class="status-message">Upload a flow-feature CSV with CICFlowMeter-style columns.</div>
+        </section>
+        <section class="panel">
+          <h2>CSV Result</h2>
+          <div id="csvSummary" class="summary-grid"></div>
+          <div class="table-wrap"><table id="csvAlertsTable"></table></div>
+        </section>
+      </section>
+
+      <section id="pcap" class="view">
+        <section class="panel form-panel">
+          <div class="upload-row">
+            <input id="pcapFile" type="file" accept=".pcap,.pcapng">
+            <button id="analyzePcapButton" class="primary-button">Analyze PCAP</button>
+          </div>
+          <div id="pcapStatus" class="status-message">Upload a PCAP or PCAPNG. Packet headers are reconstructed into flows before ML inference.</div>
+        </section>
+        <section class="panel">
+          <h2>PCAP Result</h2>
+          <div id="pcapWarnings" class="warning-list"></div>
+          <div id="pcapSummary" class="summary-grid"></div>
+          <div class="table-wrap"><table id="pcapAlertsTable"></table></div>
+        </section>
+      </section>
+
+      <section id="alerts" class="view">
+        <section class="panel filters">
+          <select id="filterPrediction"><option value="">All attacks</option></select>
+          <select id="filterSeverity"><option value="">All severities</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
+          <select id="filterStatus"><option value="">All statuses</option><option value="new">new</option><option value="reviewed">reviewed</option><option value="false_positive">false positive</option><option value="confirmed">confirmed</option></select>
+          <select id="filterSourceType"><option value="">All sources</option><option value="csv">CSV</option><option value="pcap">PCAP</option><option value="live">Live</option></select>
+          <input id="filterFrom" type="date">
+          <input id="filterTo" type="date">
+          <button id="applyAlertFilters" class="secondary-button">Apply</button>
+          <button id="exportFilteredAlerts" class="secondary-button">Export JSONL</button>
+        </section>
+        <section class="panel">
+          <h2>Alerts</h2>
+          <div class="table-wrap"><table id="alertsTable"></table></div>
+        </section>
+      </section>
+
+      <section id="model" class="view">
+        <section class="panel">
+          <h2>Model Metadata</h2>
+          <div id="modelInfoPanel" class="model-info"></div>
+        </section>
+      </section>
+
+      <section id="settings" class="view">
+        <section class="panel form-panel">
+          <div class="form-grid">
+            <label>OpenRouter model<input id="settingModel" placeholder="anthropic/claude-3.5-sonnet"></label>
+            <label>AI privacy mode<select id="settingPrivacy"><option value="strict">strict</option><option value="redacted">redacted</option><option value="lab">lab</option></select></label>
+            <label>Capture window seconds<input id="settingWindow" type="number" min="1"></label>
+            <label>Default interface<input id="settingInterface" placeholder="Wi-Fi, Ethernet, eth0"></label>
+            <label>SIEM export directory<input id="settingExportDir"></label>
+            <label class="checkbox-row"><input id="settingAiEnabled" type="checkbox"> Enable AI explanations</label>
+          </div>
+          <button id="saveSettingsButton" class="primary-button">Save Settings</button>
+          <div id="settingsStatus" class="status-message"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <aside id="alertDetails" class="details-panel">
+    <button id="closeDetails" class="close-button">Close</button>
+    <div id="alertDetailsContent"></div>
+  </aside>
+</body>
+</html>

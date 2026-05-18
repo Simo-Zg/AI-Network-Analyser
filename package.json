@@ -1,0 +1,39 @@
+{
+  "name": "ai-network-analyzer",
+  "version": "0.2.0",
+  "description": "Electron + Node.js + Python ML desktop-style AI network analyzer",
+  "main": "src/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "server": "node src/server/index.js",
+    "dev": "concurrently \"npm run server\" \"electron .\"",
+    "test": "jest",
+    "mongo:up": "docker compose up -d mongodb",
+    "mongo:down": "docker compose down",
+    "ml:install": "pip install -r ml_service/requirements.txt",
+    "ml:train": "python ml_service/train_multiclass.py",
+    "ml:test": "pytest ml_service/tests"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "mongoose": "^8.9.5",
+    "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "electron": "^42.0.1",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/src/server/tests/**/*.test.js"
+    ]
+  }
+}
