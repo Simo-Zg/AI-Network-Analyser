@@ -1,5 +1,19 @@
 (function () {
-  const colors = ["#35c2a9", "#5aa8ff", "#e2b84b", "#ff6674", "#9a7bff", "#55d27f"];
+  const fallbackColors = ["#3b82f6", "#10b981", "#d6a93a", "#ef5350", "#8b5cf6", "#14b8a6"];
+  let lastDashboardData = null;
+  let resizeTimer = null;
+
+  function chartColors() {
+    const styles = getComputedStyle(document.body);
+    return [
+      styles.getPropertyValue("--accent").trim(),
+      styles.getPropertyValue("--green").trim(),
+      styles.getPropertyValue("--amber").trim(),
+      styles.getPropertyValue("--red").trim(),
+      styles.getPropertyValue("--blue").trim(),
+      "#8b5cf6"
+    ].filter(Boolean);
+  }
 
   function countBy(items, getter) {
     return items.reduce((acc, item) => {
@@ -16,33 +30,61 @@
   function drawBarChart(canvasId, data) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
+    const parentWidth = canvas.parentElement?.clientWidth || 0;
+    const cssWidth = Math.max(260, Math.floor(canvas.clientWidth || parentWidth - 32 || 320));
+    const cssHeight = 170;
+    const ratio = window.devicePixelRatio || 1;
     const ctx = canvas.getContext("2d");
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.max(320, rect.width * window.devicePixelRatio);
-    canvas.height = 170 * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    ctx.clearRect(0, 0, rect.width, 170);
+    canvas.style.width = "100%";
+    canvas.style.height = `${cssHeight}px`;
+    canvas.width = Math.floor(cssWidth * ratio);
+    canvas.height = Math.floor(cssHeight * ratio);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    const styles = getComputedStyle(document.body);
+    const textColor = styles.getPropertyValue("--text").trim() || "#e0e0e0";
+    const mutedColor = styles.getPropertyValue("--muted").trim() || "#a0aec0";
+    const borderColor = styles.getPropertyValue("--border").trim() || "#374151";
+    const colors = chartColors();
 
     const entries = Object.entries(data).slice(0, 8);
     if (entries.length === 0) {
-      ctx.fillStyle = "#8fa3b8";
+      ctx.fillStyle = mutedColor;
+      ctx.font = "13px Segoe UI";
       ctx.fillText("No data yet", 14, 28);
       return;
     }
 
     const max = Math.max(...entries.map((entry) => entry[1]), 1);
-    const barWidth = Math.max((rect.width - 32) / entries.length - 10, 18);
+    const left = 18;
+    const right = 12;
+    const bottom = 34;
+    const top = 16;
+    const plotWidth = cssWidth - left - right;
+    const plotHeight = cssHeight - top - bottom;
+    const gap = Math.max(8, Math.min(14, plotWidth / entries.length / 4));
+    const barWidth = Math.max((plotWidth - gap * (entries.length - 1)) / entries.length, 14);
+
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(left, top + plotHeight);
+    ctx.lineTo(cssWidth - right, top + plotHeight);
+    ctx.stroke();
+
     entries.forEach(([label, value], index) => {
-      const height = Math.max((value / max) * 96, 4);
-      const x = 16 + index * (barWidth + 10);
-      const y = 128 - height;
-      ctx.fillStyle = colors[index % colors.length];
+      const height = Math.max((value / max) * (plotHeight - 18), 4);
+      const x = left + index * (barWidth + gap);
+      const y = top + plotHeight - height;
+      ctx.fillStyle = colors[index % colors.length] || fallbackColors[index % fallbackColors.length];
       ctx.fillRect(x, y, barWidth, height);
-      ctx.fillStyle = "#d8e4f0";
+      ctx.fillStyle = textColor;
       ctx.font = "12px Segoe UI";
       ctx.fillText(String(value), x, y - 6);
-      ctx.fillStyle = "#8fa3b8";
-      ctx.fillText(label.length > 12 ? `${label.slice(0, 11)}.` : label, x, 150);
+      ctx.fillStyle = mutedColor;
+      const safeLabel = label.length > 12 ? `${label.slice(0, 11)}.` : label;
+      ctx.fillText(safeLabel, x, cssHeight - 10);
     });
   }
 
@@ -78,6 +120,12 @@
     });
 
     const topAttack = Object.entries(attackCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "none";
+    lastDashboardData = {
+      attackCounts,
+      byHour,
+      severityCounts,
+      sourceCounts
+    };
     document.getElementById("metricTotalFlows").textContent = batches.length ? sumBatches("totalFlows") : alerts.length;
     document.getElementById("metricTotalAlerts").textContent = alerts.length;
     document.getElementById("metricMalicious").textContent = batches.length ? sumBatches("maliciousCount") : alerts.length;
@@ -110,5 +158,18 @@
     ]);
   }
 
-  window.Dashboard = { render };
+  function redrawCharts() {
+    if (!lastDashboardData || !document.getElementById("dashboard")?.classList.contains("active-view")) return;
+    drawBarChart("attackChart", lastDashboardData.attackCounts);
+    drawBarChart("timeChart", lastDashboardData.byHour);
+    drawBarChart("severityChart", lastDashboardData.severityCounts);
+    drawBarChart("sourceTypeChart", lastDashboardData.sourceCounts);
+  }
+
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(redrawCharts, 120);
+  });
+
+  window.Dashboard = { render, redrawCharts };
 })();

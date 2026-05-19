@@ -191,6 +191,74 @@ async function getModelHistory() {
   }
 }
 
+async function isFreshArtifact(outputPath, inputPath) {
+  try {
+    const [outputStat, inputStat] = await Promise.all([fs.stat(outputPath), fs.stat(inputPath)]);
+    return outputStat.mtimeMs >= inputStat.mtimeMs;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function normalizeTreeDepth(maxDepth) {
+  const normalized = String(maxDepth || "3").trim().toLowerCase();
+  if (["full", "none", "all", "unlimited"].includes(normalized)) return "full";
+  const parsed = Number.parseInt(normalized, 10);
+  return String(Number.isFinite(parsed) ? Math.max(1, Math.min(parsed, 8)) : 3);
+}
+
+async function getCachedTreePreviewPath() {
+  const preferred = path.join(env.pythonMlServiceDir, "models", "tree_graph_depth_3.png");
+  const legacy = path.join(env.pythonMlServiceDir, "models", "tree_graph.png");
+  try {
+    await fs.access(preferred);
+    return preferred;
+  } catch (_error) {
+    try {
+      await fs.access(legacy);
+      return legacy;
+    } catch (_legacyError) {
+      return null;
+    }
+  }
+}
+
+async function renderTreeGraph(options = {}) {
+  const depth = normalizeTreeDepth(options.maxDepth);
+  const outputName = depth === "full" ? "tree_graph_full.png" : `tree_graph_depth_${depth}.png`;
+  const outputPath = path.join(env.pythonMlServiceDir, "models", outputName);
+  const modelPath = path.join(env.pythonMlServiceDir, "models", "random_forest_multiclass.joblib");
+  const metadataPath = path.join(env.pythonMlServiceDir, "models", "model_metadata.json");
+  if (depth === "3") {
+    const cachedPreview = await getCachedTreePreviewPath();
+    if (cachedPreview) return cachedPreview;
+  }
+  if (await isFreshArtifact(outputPath, modelPath)) {
+    return outputPath;
+  }
+  await runJsonScript(
+    "render_tree_graph.py",
+    ["--model", modelPath, "--metadata", metadataPath, "--output", outputPath, "--max-depth", depth],
+    { timeoutMs: depth === "full" ? 10 * 60 * 1000 : 120000 }
+  );
+  return outputPath;
+}
+
+async function exportTreeText() {
+  const outputPath = path.join(env.pythonMlServiceDir, "models", "tree_0_full.txt");
+  const modelPath = path.join(env.pythonMlServiceDir, "models", "random_forest_multiclass.joblib");
+  const metadataPath = path.join(env.pythonMlServiceDir, "models", "model_metadata.json");
+  if (await isFreshArtifact(outputPath, modelPath)) {
+    return outputPath;
+  }
+  await runJsonScript(
+    "export_tree_text.py",
+    ["--model", modelPath, "--metadata", metadataPath, "--output", outputPath],
+    { timeoutMs: 10 * 60 * 1000 }
+  );
+  return outputPath;
+}
+
 async function analyzeCsv(filePath) {
   return runJsonScript("predict_csv.py", ["--input", filePath], { timeoutMs: 180000 });
 }
@@ -284,6 +352,10 @@ function startCapture(options, onEvent) {
   captureProcess.stderr.on("data", (chunk) => {
     const message = chunk.toString().trim();
     if (message) {
+      if (/Unable to guess datalink type/i.test(message)) {
+        logger.debug("suppressed capture_worker datalink warning", { message });
+        return;
+      }
       logger.warn("capture_worker stderr", { message });
     }
   });
@@ -327,6 +399,9 @@ module.exports = {
   health,
   getModelInfo,
   getModelHistory,
+  getCachedTreePreviewPath,
+  renderTreeGraph,
+  exportTreeText,
   analyzeCsv,
   analyzePcap,
   trainModel,

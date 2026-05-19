@@ -16,10 +16,18 @@
   <script defer src="js/app.js"></script>
 </head>
 <body>
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-card">
+      <img src="../../app-icon.png" alt="" class="loading-icon">
+      <strong>AI Network Analyzer</strong>
+      <span>Starting local services...</span>
+      <div class="loading-bar"><i></i></div>
+    </div>
+  </div>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">AN</div>
+        <img src="../../app-icon.png" alt="" class="brand-icon">
         <div>
           <div class="brand-name">AI Network Analyzer</div>
           <div class="brand-subtitle">Local IDS Workbench</div>
@@ -114,33 +122,55 @@
       </section>
 
       <section id="csv" class="view">
-        <section class="panel form-panel">
-          <div class="upload-row">
-            <input id="csvFile" type="file" accept=".csv">
-            <button id="analyzeCsvButton" class="primary-button">Analyze CSV</button>
+        <section class="panel analysis-panel">
+          <div class="analysis-layout">
+            <div class="upload-box" data-upload="csv">
+              <input id="csvFile" type="file" accept=".csv" multiple hidden>
+              <div class="upload-icon">CSV</div>
+              <h2>Flow Feature Files</h2>
+              <p>Select CICFlowMeter-style CSV files and review the queue before analysis.</p>
+              <div class="button-row">
+                <button id="selectCsvButton" class="secondary-button">Select Files</button>
+                <button id="analyzeCsvButton" class="primary-button">Analyze Queue</button>
+              </div>
+              <div id="csvFileList" class="file-list"></div>
+            </div>
+            <div class="analysis-results">
+              <h2>CSV Results</h2>
+              <div id="csvStatus" class="status-message">No CSV files selected.</div>
+              <div id="csvResultDeck" class="result-deck">
+                <div id="csvSummary" class="summary-grid"></div>
+                <div class="table-wrap result-scroll"><table id="csvAlertsTable"></table></div>
+              </div>
+            </div>
           </div>
-          <div id="csvStatus" class="status-message">Upload a flow-feature CSV with CICFlowMeter-style columns.</div>
-        </section>
-        <section class="panel">
-          <h2>CSV Result</h2>
-          <div id="csvSummary" class="summary-grid"></div>
-          <div class="table-wrap"><table id="csvAlertsTable"></table></div>
         </section>
       </section>
 
       <section id="pcap" class="view">
-        <section class="panel form-panel">
-          <div class="upload-row">
-            <input id="pcapFile" type="file" accept=".pcap,.pcapng">
-            <button id="analyzePcapButton" class="primary-button">Analyze PCAP</button>
+        <section class="panel analysis-panel">
+          <div class="analysis-layout">
+            <div class="upload-box" data-upload="pcap">
+              <input id="pcapFile" type="file" accept=".pcap,.pcapng" multiple hidden>
+              <div class="upload-icon">PCAP</div>
+              <h2>Packet Capture Files</h2>
+              <p>Select PCAP or PCAPNG files. The analyzer reconstructs flows before inference.</p>
+              <div class="button-row">
+                <button id="selectPcapButton" class="secondary-button">Select Files</button>
+                <button id="analyzePcapButton" class="primary-button">Analyze Queue</button>
+              </div>
+              <div id="pcapFileList" class="file-list"></div>
+            </div>
+            <div class="analysis-results">
+              <h2>PCAP Results</h2>
+              <div id="pcapStatus" class="status-message">No PCAP files selected.</div>
+              <div id="pcapWarnings" class="warning-list"></div>
+              <div id="pcapResultDeck" class="result-deck">
+                <div id="pcapSummary" class="summary-grid"></div>
+                <div class="table-wrap result-scroll"><table id="pcapAlertsTable"></table></div>
+              </div>
+            </div>
           </div>
-          <div id="pcapStatus" class="status-message">Upload a PCAP or PCAPNG. Packet headers are reconstructed into flows before ML inference.</div>
-        </section>
-        <section class="panel">
-          <h2>PCAP Result</h2>
-          <div id="pcapWarnings" class="warning-list"></div>
-          <div id="pcapSummary" class="summary-grid"></div>
-          <div class="table-wrap"><table id="pcapAlertsTable"></table></div>
         </section>
       </section>
 
@@ -169,14 +199,70 @@
       </section>
 
       <section id="settings" class="view">
-        <section class="panel form-panel">
+        <section class="panel form-panel settings-panel">
+          <h2>Appearance</h2>
+          <div class="settings-stack">
+            <div class="setting-row">
+              <div>
+                <strong>Theme</strong>
+                <span>Switch between the professional light and dark palettes.</span>
+              </div>
+              <!-- From Uiverse.io by andrew-demchenk0 --> 
+            <label class="theme-switch" title="Toggle theme">
+              <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
+              <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>   
+              <input type="checkbox" id="settingThemeToggle">
+              <span class="theme-slider"></span>
+            </label>
+            </div>
+            <label class="zoom-control">Zoom level
+              <div class="range-row">
+                <input id="settingZoomLevel" type="range" min="50" max="200" step="5">
+                <strong id="settingZoomValue">100%</strong>
+              </div>
+            </label>
+          </div>
+        </section>
+        <section class="panel form-panel settings-panel">
+          <h2>Analysis And Integrations</h2>
           <div class="form-grid">
             <label>OpenRouter model<input id="settingModel" placeholder="anthropic/claude-3.5-sonnet"></label>
             <label>AI privacy mode<select id="settingPrivacy"><option value="strict">strict</option><option value="redacted">redacted</option><option value="lab">lab</option></select></label>
             <label>Capture window seconds<input id="settingWindow" type="number" min="1"></label>
             <label>Default interface<input id="settingInterface" placeholder="Wi-Fi, Ethernet, eth0"></label>
             <label>SIEM export directory<input id="settingExportDir"></label>
-            <label class="checkbox-row"><input id="settingAiEnabled" type="checkbox"> Enable AI explanations</label>
+          </div>
+          <div class="settings-stack">
+            <div class="setting-row">
+              <div>
+                <strong>AI explanations</strong>
+                <span>Use OpenRouter from the backend for privacy-preserving alert explanations.</span>
+              </div>
+              <label class="toggle-switch">
+                <input id="settingAiEnabled" type="checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div>
+                <strong>System notifications</strong>
+                <span>Show desktop alerts when new detections arrive.</span>
+              </div>
+              <label class="toggle-switch">
+                <input id="settingNotificationsEnabled" type="checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div>
+                <strong>High severity only</strong>
+                <span>Limit desktop notifications to High and Critical alerts.</span>
+              </div>
+              <label class="toggle-switch">
+                <input id="settingNotifyHighSeverityOnly" type="checkbox">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           <button id="saveSettingsButton" class="primary-button">Save Settings</button>
           <div id="settingsStatus" class="status-message"></div>

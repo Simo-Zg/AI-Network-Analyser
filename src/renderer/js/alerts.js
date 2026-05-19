@@ -1,8 +1,17 @@
 (function () {
   function endpointText(endpoint) {
     if (!endpoint) return "unknown";
-    const host = endpoint.redactedIp || endpoint.ip || "unknown";
+    const host = endpoint.ip || endpoint.redactedIp || "unknown";
     return `${host}${endpoint.port ? `:${endpoint.port}` : ""}`;
+  }
+
+  function visibleEndpoint(endpoint) {
+    if (!endpoint) return null;
+    return {
+      ip: endpoint.ip || "unknown",
+      port: endpoint.port ?? null,
+      type: endpoint.type || "unknown"
+    };
   }
 
   function renderTable(tableId, alerts, options = {}) {
@@ -13,7 +22,8 @@
       return;
     }
 
-    const actionColumn = options.compact
+    const showActions = !options.compact || options.actions;
+    const actionColumn = !showActions
       ? ""
       : "<th>Actions</th>";
     table.innerHTML = `
@@ -27,11 +37,11 @@
         ${alerts
           .map((alert) => {
             const id = alert.eventId || alert._id;
-            const actions = options.compact
+            const actions = !showActions
               ? ""
               : `<td>
                   <button data-action="details" data-id="${window.escapeHtml(id)}">Details</button>
-                  <button data-action="explain" data-id="${window.escapeHtml(id)}">AI</button>
+                  <button data-action="explain" data-id="${window.escapeHtml(id)}">Explain</button>
                   <button data-action="reviewed" data-id="${window.escapeHtml(id)}">Reviewed</button>
                   <button data-action="confirmed" data-id="${window.escapeHtml(id)}">Confirm</button>
                   <button data-action="false_positive" data-id="${window.escapeHtml(id)}">False +</button>
@@ -87,27 +97,60 @@
     window.Dashboard.render();
   }
 
+  function listBlock(title, items) {
+    const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (!safeItems.length) return "";
+    return `
+      <section class="ai-explanation-card">
+        <h4>${window.escapeHtml(title)}</h4>
+        <ul>${safeItems.map((item) => `<li>${window.escapeHtml(item)}</li>`).join("")}</ul>
+      </section>`;
+  }
+
+  function textBlock(title, value) {
+    if (!value) return "";
+    return `
+      <section class="ai-explanation-card">
+        <h4>${window.escapeHtml(title)}</h4>
+        <p>${window.escapeHtml(value)}</p>
+      </section>`;
+  }
+
   function explanationHtml(aiExplanation) {
     if (!aiExplanation || aiExplanation.status === "not_requested") {
-      return "<p>AI explanation has not been requested.</p>";
+      return `<div class="ai-explanation empty-state">AI explanation has not been requested.</div>`;
     }
     if (aiExplanation.status === "error") {
-      return `<p>${window.escapeHtml(aiExplanation.error || "AI explanation failed.")}</p>`;
+      const details = aiExplanation.content?.providerMessage
+        ? `<pre class="ai-provider-message">${window.escapeHtml(aiExplanation.content.providerMessage)}</pre>`
+        : "";
+      return `
+        <div class="ai-explanation ai-explanation-error">
+          <section class="ai-explanation-card">
+            <h4>External AI Unavailable</h4>
+            <p>${window.escapeHtml(aiExplanation.error || "AI explanation failed.")}</p>
+            ${details}
+          </section>
+          <p class="muted-note">The Random Forest detection and local alert data are still available; only the external AI explanation failed.</p>
+        </div>`;
     }
     const content = aiExplanation.content || {};
     if (content.rawText) {
-      return `<pre>${window.escapeHtml(content.rawText)}</pre>`;
+      return `<div class="ai-explanation"><pre>${window.escapeHtml(content.rawText)}</pre></div>`;
     }
     return `
-      <p>${window.escapeHtml(content.summary || "")}</p>
-      <h4>What it means</h4><p>${window.escapeHtml(content.what_it_means || "")}</p>
-      <h4>Why the model flagged it</h4><ul>${(content.why_the_model_flagged_it || []).map((item) => `<li>${window.escapeHtml(item)}</li>`).join("")}</ul>
-      <h4>False positives</h4><ul>${(content.possible_false_positives || []).map((item) => `<li>${window.escapeHtml(item)}</li>`).join("")}</ul>
-      <h4>Immediate actions</h4><ul>${(content.immediate_actions || []).map((item) => `<li>${window.escapeHtml(item)}</li>`).join("")}</ul>
-      <h4>Mitigations</h4><ul>${(content.mitigations || []).map((item) => `<li>${window.escapeHtml(item)}</li>`).join("")}</ul>
-      <h4>SIEM correlation</h4><ul>${(content.siem_correlation || []).map((item) => `<li>${window.escapeHtml(item)}</li>`).join("")}</ul>
-      <p>${window.escapeHtml(content.analyst_note || "")}</p>
-      <p>${window.escapeHtml(content.confidence_caution || "")}</p>`;
+      <div class="ai-explanation">
+        ${content.title ? `<div class="ai-explanation-title">${window.escapeHtml(content.title)}</div>` : ""}
+        ${content.summary ? `<p class="ai-explanation-summary">${window.escapeHtml(content.summary)}</p>` : ""}
+        ${textBlock("What it means", content.what_it_means)}
+        ${listBlock("Why the model flagged it", content.why_the_model_flagged_it)}
+        ${listBlock("False positives", content.possible_false_positives)}
+        ${listBlock("Immediate actions", content.immediate_actions)}
+        ${listBlock("Mitigations", content.mitigations)}
+        ${listBlock("SIEM correlation", content.siem_correlation)}
+        ${textBlock("Analyst note", content.analyst_note)}
+        ${textBlock("Confidence caution", content.confidence_caution)}
+      </div>`;
   }
 
   function showDetails(alert) {
@@ -123,8 +166,8 @@
         <pre>${window.escapeHtml(
           JSON.stringify(
             {
-              source: alert.source,
-              destination: alert.destination,
+              source: visibleEndpoint(alert.source),
+              destination: visibleEndpoint(alert.destination),
               network: alert.network,
               sourceType: alert.sourceType,
               sessionId: alert.sessionId
@@ -158,12 +201,17 @@
     details.classList.add("open");
   }
 
-  async function handleAction(action, id) {
+  async function handleAction(action, id, button) {
+    const originalText = button?.textContent;
     try {
       if (action === "details") {
         const payload = await window.API.getAlert(id);
         showDetails(payload.alert);
       } else if (action === "explain") {
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Explaining...";
+        }
         const payload = await window.API.explainAlert(id);
         const alertPayload = await window.API.getAlert(id);
         showDetails(alertPayload.alert);
@@ -176,7 +224,20 @@
         window.alert(`Exported to ${payload.filePath}`);
       }
     } catch (error) {
-      window.alert(error.message);
+      if (action === "explain") {
+        try {
+          const alertPayload = await window.API.getAlert(id);
+          showDetails(alertPayload.alert);
+        } catch (_ignored) {
+          // Keep the original error below if the refresh also fails.
+        }
+      }
+      window.alert(error.payload?.error || error.message);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
     }
   }
 
@@ -200,13 +261,14 @@
     document.getElementById("alertsTable").addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
-      handleAction(button.dataset.action, button.dataset.id);
+      handleAction(button.dataset.action, button.dataset.id, button);
     });
   }
 
   window.Alerts = {
     bind,
     render,
-    renderTable
+    renderTable,
+    handleAction
   };
 })();

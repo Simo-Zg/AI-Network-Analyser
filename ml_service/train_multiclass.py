@@ -341,7 +341,7 @@ def train(
     max_rows_per_class: int = 25_000,
     max_total_rows: int = 400_000,
     max_rows_per_file: int = 250_000,
-    n_estimators: int = 200,
+    n_estimators: int = 50,
     random_state: int = 42,
 ):
     files = find_csv_files(data_dir)
@@ -567,7 +567,7 @@ def main():
         default=env_int("ML_TRAIN_MAX_ROWS_PER_FILE", 250_000),
         help="Maximum rows to scan from each CSV. Use 0 to scan every row.",
     )
-    parser.add_argument("--n-estimators", type=int, default=env_int("ML_TRAIN_N_ESTIMATORS", 200))
+    parser.add_argument("--n-estimators", type=int, default=env_int("ML_TRAIN_N_ESTIMATORS", 50))
     parser.add_argument("--random-state", type=int, default=env_int("ML_TRAIN_RANDOM_STATE", 42))
     args = parser.parse_args()
 

@@ -27,3 +27,19 @@ test("invalid OpenRouter JSON falls back to raw text", () => {
   expect(parsed.status).toBe("completed_with_parse_warning");
   expect(parsed.content.rawText).toBe("not json");
 });
+
+test("OpenRouter 429 is normalized into a clear rate-limit error", () => {
+  const normalized = openRouterService.normalizeOpenRouterError({
+    message: "Request failed with status code 429",
+    response: {
+      status: 429,
+      headers: { "retry-after": "60" },
+      data: { error: { message: "Rate limit exceeded" } }
+    }
+  });
+
+  expect(normalized.status).toBe(429);
+  expect(normalized.code).toBe("OPENROUTER_RATE_LIMITED");
+  expect(normalized.message).toContain("rate limit or quota");
+  expect(normalized.providerMessage).toBe("Rate limit exceeded");
+});

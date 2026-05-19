@@ -1,0 +1,252 @@
+[
+  {
+    "modelName": "RandomForest_IDS",
+    "modelVersion": "rf-multiclass-20260518155821",
+    "createdAt": "2026-05-18T15:58:21.638881+00:00",
+    "datasetName": "CICIDS/CSE-CIC-IDS compatible flow CSV",
+    "datasetFiles": [
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Friday-02-03-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Friday-16-02-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Friday-23-02-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Thursday-01-03-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Thursday-15-02-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Thursday-22-02-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Wednesday-14-02-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Wednesday-21-02-2018_TrafficForML_CICFlowMeter.csv",
+      "ml_service\\data\\raw\\cse_cic_ids2018_processed\\Wednesday-28-02-2018_TrafficForML_CICFlowMeter.csv"
+    ],
+    "supportedClasses": [
+      "BENIGN",
+      "Botnet",
+      "DoS",
+      "Other"
+    ],
+    "featureCount": 19,
+    "features": [
+      "Flow Duration",
+      "Total Fwd Packets",
+      "Total Backward Packets",
+      "Total Length of Fwd Packets",
+      "Total Length of Bwd Packets",
+      "Flow Bytes/s",
+      "Flow Packets/s",
+      "Flow IAT Mean",
+      "Flow IAT Std",
+      "Flow IAT Max",
+      "Flow IAT Min",
+      "Fwd Packet Length Mean",
+      "Bwd Packet Length Mean",
+      "Packet Length Mean",
+      "Packet Length Std",
+      "SYN Flag Count",
+      "ACK Flag Count",
+      "Destination Port",
+      "Protocol"
+    ],
+    "labelMode": "grouped",
+    "algorithm": "RandomForestClassifier",
+    "trainingConfig": {
+      "labelMode": "grouped",
+      "algorithm": "RandomForestClassifier",
+      "nEstimators": 50,
+      "classWeight": "balanced_subsample",
+      "randomState": 42,
+      "nJobs": -1,
+      "maxDepth": null,
+      "scaling": "not_used_for_random_forest",
+      "split": "random_stratified_train_test_split; source-file split not used",
+      "dataDir": "ml_service\\data\\raw\\cse_cic_ids2018_processed",
+      "missingSupportedFeatures": [],
+      "droppedConstantFeatures": [],
+      "duplicateRowCount": 410765
+    },
+    "dataProfile": {
+      "rawRows": 16233002,
+      "rowsScanned": 16233002,
+      "rowsAfterDeduplication": 15822239,
+      "rowsAfterCleaning": 15822236,
+      "duplicateRowsRemoved": 410765,
+      "trainRows": 12657788,
+      "testRows": 3164448,
+      "classDistribution": {
+        "BENIGN": 13467970,
+        "Other": 1565881,
+        "DoS": 506075,
+        "Botnet": 282310
+      },
+      "classDistributionScanned": {
+        "BENIGN": 13484708,
+        "Botnet": 286191,
+        "DoS": 654300,
+        "Other": 1807803
+      },
+      "trainClassDistribution": {
+        "BENIGN": 10774375,
+        "Other": 1252705,
+        "DoS": 404860,
+        "Botnet": 225848
+      },
+      "testClassDistribution": {
+        "BENIGN": 2693595,
+        "Other": 313176,
+        "DoS": 101215,
+        "Botnet": 56462
+      },
+      "datasetFileCount": 10,
+      "loadingMode": "full",
+      "rowsSampledBeforeTotalCap": 16233002,
+      "rowsSampled": 16233002,
+      "maxRowsPerClass": 0,
+      "maxTotalRows": 0,
+      "maxRowsPerFile": 0,
+      "chunksize": 0,
+      "fileRowCounts": {
+        "Friday-02-03-2018_TrafficForML_CICFlowMeter.csv": 1048575,
+        "Friday-16-02-2018_TrafficForML_CICFlowMeter.csv": 1048575,
+        "Friday-23-02-2018_TrafficForML_CICFlowMeter.csv": 1048575,
+        "Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv": 7948748,
+        "Thursday-01-03-2018_TrafficForML_CICFlowMeter.csv": 331125,
+        "Thursday-15-02-2018_TrafficForML_CICFlowMeter.csv": 1048575,
+        "Thursday-22-02-2018_TrafficForML_CICFlowMeter.csv": 1048575,
+        "Wednesday-14-02-2018_TrafficForML_CICFlowMeter.csv": 1048575,
+        "Wednesday-21-02-2018_TrafficForML_CICFlowMeter.csv": 1048575,
+        "Wednesday-28-02-2018_TrafficForML_CICFlowMeter.csv": 613104
+      },
+      "parseWarnings": [],
+      "selectedFeatureCount": 19,
+      "missingSupportedFeatureCount": 0,
+      "droppedConstantFeatureCount": 0
+    },
+    "metrics": {
+      "accuracy": 0.9498746700846403,
+      "macroPrecision": 0.8305305353573058,
+      "macroRecall": 0.8800131674292546,
+      "macroF1": 0.8405004570216479,
+      "weightedF1": 0.9521826551306103,
+      "confusionMatrixLabels": [
+        "BENIGN",
+        "Botnet",
+        "DoS",
+        "Other"
+      ],
+      "confusionMatrix": [
+        [
+          2648475,
+          1,
+          21103,
+          24016
+        ],
+        [
+          11,
+          56451,
+          0,
+          0
+        ],
+        [
+          726,
+          0,
+          86167,
+          14322
+        ],
+        [
+          27783,
+          0,
+          70657,
+          214736
+        ]
+      ],
+      "perClassMetrics": {
+        "BENIGN": {
+          "precision": 0.9893462632541339,
+          "recall": 0.9832491521553909,
+          "f1-score": 0.9862882848997968,
+          "support": 2693595.0
+        },
+        "Botnet": {
+          "precision": 0.9999822858357542,
+          "recall": 0.9998051787042612,
+          "f1-score": 0.9998937244274404,
+          "support": 56462.0
+        },
+        "DoS": {
+          "precision": 0.4842828800575517,
+          "recall": 0.8513263844291854,
+          "f1-score": 0.6173703706357337,
+          "support": 101215.0
+        },
+        "Other": {
+          "precision": 0.8485107122817832,
+          "recall": 0.685671954428181,
+          "f1-score": 0.7584494481236204,
+          "support": 313176.0
+        }
+      }
+    },
+    "topFeatureImportance": [
+      {
+        "feature": "Destination Port",
+        "importance": 0.24529793565806762
+      },
+      {
+        "feature": "Flow IAT Mean",
+        "importance": 0.10360640751455401
+      },
+      {
+        "feature": "Flow Packets/s",
+        "importance": 0.0815749323546828
+      },
+      {
+        "feature": "Flow IAT Min",
+        "importance": 0.07822581297475487
+      },
+      {
+        "feature": "Flow IAT Max",
+        "importance": 0.0742788231414802
+      },
+      {
+        "feature": "Fwd Packet Length Mean",
+        "importance": 0.05614187950975783
+      },
+      {
+        "feature": "Flow Duration",
+        "importance": 0.05295006161614043
+      },
+      {
+        "feature": "Bwd Packet Length Mean",
+        "importance": 0.049509620215499664
+      },
+      {
+        "feature": "Flow Bytes/s",
+        "importance": 0.044835995084526244
+      },
+      {
+        "feature": "Packet Length Mean",
+        "importance": 0.03403715484343995
+      },
+      {
+        "feature": "Total Length of Fwd Packets",
+        "importance": 0.032774476590004306
+      },
+      {
+        "feature": "Packet Length Std",
+        "importance": 0.030760751943241085
+      },
+      {
+        "feature": "Total Length of Bwd Packets",
+        "importance": 0.02869020387220738
+      },
+      {
+        "feature": "Total Fwd Packets",
+        "importance": 0.02170982885030352
+      },
+      {
+        "feature": "Total Backward Packets",
+        "importance": 0.021402521827660406
+      }
+    ],
+    "notes": "Multiclass-capable Random Forest pipeline. Supported classes reflect the labels present in the training data; the app must not claim detection for classes absent from this list.",
+    "sklearnVersion": "1.8.0",
+    "pythonVersion": "3.14.3"
+  }
+]

@@ -62,6 +62,42 @@ function parseJsonOrText(content) {
   }
 }
 
+function normalizeOpenRouterError(error) {
+  const status = error.response?.status || error.status || 502;
+  const retryAfter = error.response?.headers?.["retry-after"];
+  const providerMessage =
+    error.response?.data?.error?.message ||
+    error.response?.data?.message ||
+    error.response?.data?.error ||
+    error.message;
+
+  if (status === 429) {
+    const retryText = retryAfter ? ` Retry after about ${retryAfter} second(s).` : "";
+    const normalized = new Error(
+      `AI explanation unavailable: OpenRouter rate limit or quota was reached.${retryText}`
+    );
+    normalized.status = 429;
+    normalized.code = "OPENROUTER_RATE_LIMITED";
+    normalized.providerMessage = String(providerMessage || "Rate limited");
+    normalized.retryAfter = retryAfter;
+    return normalized;
+  }
+
+  if (status === 401 || status === 403) {
+    const normalized = new Error("AI explanation unavailable: OpenRouter rejected the API key or model access.");
+    normalized.status = status;
+    normalized.code = "OPENROUTER_AUTH_ERROR";
+    normalized.providerMessage = String(providerMessage || "Authentication failed");
+    return normalized;
+  }
+
+  const normalized = new Error(`AI explanation unavailable: ${providerMessage || "OpenRouter request failed"}`);
+  normalized.status = status;
+  normalized.code = "OPENROUTER_REQUEST_FAILED";
+  normalized.providerMessage = String(providerMessage || error.message || "OpenRouter request failed");
+  return normalized;
+}
+
 async function explainAlert(alert, options = {}) {
   const apiKey = options.apiKey ?? env.openRouterApiKey;
   const model = options.model || env.openRouterModel;
@@ -74,24 +110,29 @@ async function explainAlert(alert, options = {}) {
     throw error;
   }
 
-  const response = await axios.post(
-    `${baseUrl.replace(/\/$/, "")}/chat/completions`,
-    {
-      model,
-      messages: buildPrompt(alert, privacyMode),
-      temperature: 0.2,
-      response_format: { type: "json_object" }
-    },
-    {
-      timeout: 30000,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "AI Network Analyzer"
+  let response;
+  try {
+    response = await axios.post(
+      `${baseUrl.replace(/\/$/, "")}/chat/completions`,
+      {
+        model,
+        messages: buildPrompt(alert, privacyMode),
+        temperature: 0.2,
+        response_format: { type: "json_object" }
+      },
+      {
+        timeout: 30000,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "http://localhost:3000",
+          "X-Title": "AI Network Analyzer"
+        }
       }
-    }
-  );
+    );
+  } catch (error) {
+    throw normalizeOpenRouterError(error);
+  }
 
   const text = response.data?.choices?.[0]?.message?.content || "";
   const parsed = parseJsonOrText(text);
@@ -106,5 +147,6 @@ async function explainAlert(alert, options = {}) {
 module.exports = {
   buildPrompt,
   explainAlert,
-  parseJsonOrText
+  parseJsonOrText,
+  normalizeOpenRouterError
 };

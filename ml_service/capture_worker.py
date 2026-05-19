@@ -1,4 +1,5 @@
 import argparse
+import logging
 import signal
 import sys
 import time
@@ -17,6 +18,12 @@ from utils import json_line, now_iso
 running = True
 
 
+def quiet_capture_warnings():
+    logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+    logging.getLogger("scapy.loading").setLevel(logging.ERROR)
+    logging.getLogger("scapy.arch").setLevel(logging.ERROR)
+
+
 def handle_stop(_signum, _frame):
     global running
     running = False
@@ -24,6 +31,7 @@ def handle_stop(_signum, _frame):
 
 def capture_window(interface_name, window_seconds):
     try:
+        quiet_capture_warnings()
         from scapy.sendrecv import sniff
     except Exception as error:
         raise RuntimeError(f"Scapy live capture is unavailable: {error}")

@@ -50,11 +50,18 @@ router.post("/:id/explain", async (req, res, next) => {
         provider: "OpenRouter",
         model: req.body.model,
         generatedAt: new Date(),
-        error: error.message
+        error: error.message,
+        content: {
+          code: error.code || "AI_EXPLANATION_FAILED",
+          providerMessage: error.providerMessage,
+          retryAfter: error.retryAfter
+        }
       };
       await alert.save();
       return res.status(error.status || 502).json({
         error: error.message,
+        code: error.code || "AI_EXPLANATION_FAILED",
+        retryAfter: error.retryAfter,
         explanation: alert.aiExplanation
       });
     }

@@ -1,8 +1,10 @@
 const express = require("express");
 const env = require("../config/env");
+const { mongoose } = require("../config/database");
 const AppSetting = require("../models/AppSetting");
 
 const router = express.Router();
+let memorySettings = {};
 
 const allowedKeys = [
   "openRouterModel",
@@ -10,7 +12,11 @@ const allowedKeys = [
   "captureWindowSeconds",
   "captureInterface",
   "siemExportDir",
-  "aiExplanationEnabled"
+  "aiExplanationEnabled",
+  "theme",
+  "zoomLevel",
+  "systemNotificationsEnabled",
+  "notifyHighSeverityOnly"
 ];
 
 function defaultSettings() {
@@ -21,15 +27,31 @@ function defaultSettings() {
     captureInterface: env.captureInterface,
     siemExportDir: env.siemExportDir,
     aiExplanationEnabled: env.aiExplanationEnabled,
+    theme: "dark",
+    zoomLevel: 100,
+    systemNotificationsEnabled: false,
+    notifyHighSeverityOnly: true,
     openRouterConfigured: Boolean(env.openRouterApiKey)
   };
 }
 
+function applyStoredSettings(settings, stored) {
+  for (const item of stored) settings[item.key] = item.value;
+  return settings;
+}
+
+function filterAllowedSettings(body) {
+  return Object.entries(body || {}).filter(([key]) => allowedKeys.includes(key));
+}
+
 router.get("/", async (req, res) => {
   const settings = defaultSettings();
+  Object.assign(settings, memorySettings);
   try {
-    const stored = await AppSetting.find().lean();
-    for (const item of stored) settings[item.key] = item.value;
+    if (mongoose.connection.readyState === 1) {
+      const stored = await AppSetting.find().lean();
+      applyStoredSettings(settings, stored);
+    }
   } catch (_error) {
     // Environment defaults are enough when MongoDB is unavailable.
   }
@@ -38,17 +60,25 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res, next) => {
   try {
-    const updates = Object.entries(req.body || {}).filter(([key]) => allowedKeys.includes(key));
+    const updates = filterAllowedSettings(req.body);
     for (const [key, value] of updates) {
-      await AppSetting.findOneAndUpdate(
-        { key },
-        { key, value, updatedAt: new Date() },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+      memorySettings[key] = value;
     }
-    const stored = await AppSetting.find().lean();
+
     const settings = defaultSettings();
-    for (const item of stored) settings[item.key] = item.value;
+    Object.assign(settings, memorySettings);
+
+    if (mongoose.connection.readyState === 1) {
+      for (const [key, value] of updates) {
+        await AppSetting.findOneAndUpdate(
+          { key },
+          { key, value, updatedAt: new Date() },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      }
+      const stored = await AppSetting.find().lean();
+      applyStoredSettings(settings, stored);
+    }
     res.json({ settings });
   } catch (error) {
     next(error);

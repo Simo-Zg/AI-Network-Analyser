@@ -86,6 +86,41 @@ router.get("/history", async (req, res, next) => {
   }
 });
 
+router.get("/tree-graph.png", async (req, res, next) => {
+  try {
+    const filePath = await pythonService.renderTreeGraph({ maxDepth: req.query.maxDepth });
+    res.setHeader("Cache-Control", "no-store");
+    res.sendFile(filePath);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/tree-preview.png", async (req, res, next) => {
+  try {
+    let filePath = await pythonService.getCachedTreePreviewPath();
+    if (!filePath) {
+      filePath = await pythonService.renderTreeGraph({ maxDepth: 3 });
+    }
+    res.type("png");
+    res.setHeader("Cache-Control", "no-store");
+    res.sendFile(filePath);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/tree-text.txt", async (req, res, next) => {
+  try {
+    const filePath = await pythonService.exportTreeText();
+    res.type("text/plain");
+    res.setHeader("Cache-Control", "no-store");
+    res.sendFile(filePath);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/train", async (req, res, next) => {
   try {
     const result = await pythonService.trainModel({

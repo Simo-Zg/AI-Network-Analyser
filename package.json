@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron .",
     "server": "node src/server/index.js",
-    "dev": "concurrently \"npm run server\" \"electron .\"",
+    "electron:external-api": "node scripts/start-electron-external-api.js",
+    "dev": "concurrently \"npm run server\" \"npm run electron:external-api\"",
     "test": "jest",
     "mongo:up": "docker compose up -d mongodb",
     "mongo:down": "docker compose down",

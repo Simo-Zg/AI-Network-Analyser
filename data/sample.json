@@ -1,6 +1,0 @@
-{
-  "flow_duration": 5000,
-  "packet_count": 1200,
-  "iat_mean": 10,
-  "iat_std": 2
-}

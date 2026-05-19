@@ -17,5 +17,7 @@ ml_service/data/processed/*
 !ml_service/data/processed/.gitkeep
 ml_service/models/*.joblib
 ml_service/models/*.pkl
+ml_service/models/*.png
+ml_service/models/*.txt
 backend/*.pkl
 *.zip

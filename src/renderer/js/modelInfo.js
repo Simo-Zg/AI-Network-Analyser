@@ -8,91 +8,6 @@
     return `${(Number(value) * 100).toFixed(2)}%`;
   }
 
-  function drawHistoryChart(history) {
-    const canvas = document.getElementById("modelAccuracyChart");
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const width = Math.max(520, rect.width || 720);
-    const height = 220;
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
-    const ctx = canvas.getContext("2d");
-    ctx.scale(ratio, ratio);
-    ctx.clearRect(0, 0, width, height);
-
-    if (!history.length) {
-      ctx.fillStyle = "#8fa3b8";
-      ctx.fillText("No training history yet.", 16, 28);
-      return;
-    }
-
-    const padding = { top: 20, right: 18, bottom: 48, left: 48 };
-    const plotWidth = width - padding.left - padding.right;
-    const plotHeight = height - padding.top - padding.bottom;
-    const points = history.map((entry, index) => ({
-      index,
-      label: entry.modelVersion || `run ${index + 1}`,
-      accuracy: Number(entry.metrics?.accuracy || 0),
-      macroF1: Number(entry.metrics?.macroF1 || 0),
-      weightedF1: Number(entry.metrics?.weightedF1 || 0)
-    }));
-    const xFor = (index) => padding.left + (points.length === 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth);
-    const yFor = (value) => padding.top + plotHeight - Math.max(0, Math.min(1, value)) * plotHeight;
-
-    ctx.strokeStyle = "#24354d";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top);
-    ctx.lineTo(padding.left, padding.top + plotHeight);
-    ctx.lineTo(padding.left + plotWidth, padding.top + plotHeight);
-    ctx.stroke();
-
-    [0, 0.25, 0.5, 0.75, 1].forEach((tick) => {
-      const y = yFor(tick);
-      ctx.strokeStyle = "#17263a";
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(padding.left + plotWidth, y);
-      ctx.stroke();
-      ctx.fillStyle = "#8fa3b8";
-      ctx.font = "12px Segoe UI";
-      ctx.fillText(`${Math.round(tick * 100)}%`, 8, y + 4);
-    });
-
-    function line(key, color, label, labelY) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      points.forEach((point, index) => {
-        const x = xFor(index);
-        const y = yFor(point[key]);
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-      points.forEach((point, index) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(xFor(index), yFor(point[key]), 4, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.fillStyle = color;
-      ctx.fillText(label, padding.left + 8, labelY);
-    }
-
-    line("accuracy", "#35c2a9", "accuracy", 18);
-    line("macroF1", "#5aa8ff", "macro F1", 36);
-    line("weightedF1", "#e2b84b", "weighted F1", 54);
-
-    ctx.fillStyle = "#8fa3b8";
-    ctx.font = "11px Segoe UI";
-    points.forEach((point, index) => {
-      const label = point.label.replace(/^rf-multiclass-/, "");
-      ctx.fillText(label.slice(-10), xFor(index) - 28, height - 16);
-    });
-  }
-
   function confusionMatrixHtml(metrics) {
     const matrix = metrics.confusionMatrix || [];
     const labels = metrics.confusionMatrixLabels || [];
@@ -159,6 +74,81 @@
       <pre>${window.escapeHtml(JSON.stringify(profile.classDistribution || {}, null, 2))}</pre>`;
   }
 
+  async function loadTreePreviewImage(img, statusElement) {
+    try {
+      statusElement.textContent = "Loading tree preview...";
+      statusElement.dataset.tone = "";
+      const response = await fetch(`${window.API.baseUrl}/api/model/tree-preview.png?ts=${Date.now()}`);
+      if (!response.ok) {
+        let message = `Tree preview request failed with status ${response.status}`;
+        try {
+          const payload = await response.json();
+          message = payload.error || message;
+        } catch (_error) {
+          // Keep the status-based message.
+        }
+        throw new Error(message);
+      }
+      const blob = await response.blob();
+      if (!blob.type.startsWith("image/")) {
+        throw new Error(`Tree preview returned ${blob.type || "non-image data"}`);
+      }
+      const previousUrl = img.dataset.objectUrl;
+      const objectUrl = URL.createObjectURL(blob);
+      img.dataset.objectUrl = objectUrl;
+      img.src = objectUrl;
+      if (previousUrl) URL.revokeObjectURL(previousUrl);
+      statusElement.textContent = "Tree preview loaded.";
+      statusElement.dataset.tone = "ok";
+    } catch (error) {
+      statusElement.textContent = `${error.message}. Restart the API/Electron app if you just changed the backend.`;
+      statusElement.dataset.tone = "error";
+    }
+  }
+
+  function bindTreeControls() {
+    const treeImage = document.getElementById("modelTreeGraphImage");
+    const treeStatus = document.getElementById("modelTreeStatus");
+    const treeFrameWrap = document.getElementById("modelTreeTextWrap");
+    const loadFullTreeButton = document.getElementById("loadFullTreeTextButton");
+    const renderFullTreeImageButton = document.getElementById("renderFullTreeImageButton");
+
+    if (treeImage && treeStatus) {
+      loadTreePreviewImage(treeImage, treeStatus);
+    }
+
+    if (loadFullTreeButton && treeFrameWrap) {
+      loadFullTreeButton.addEventListener("click", () => {
+        treeFrameWrap.hidden = false;
+        treeFrameWrap.innerHTML = "";
+        const frame = document.createElement("iframe");
+        frame.className = "model-tree-frame";
+        frame.title = "Complete Random Forest tree text";
+        frame.src = `${window.API.baseUrl}/api/model/tree-text.txt?ts=${Date.now()}`;
+        frame.addEventListener("load", () => {
+          window.setMessage("modelTreeStatus", "Complete tree text loaded.", "ok");
+        });
+        treeFrameWrap.appendChild(frame);
+        window.setMessage(
+          "modelTreeStatus",
+          "Loading the complete tree text. The first load can take a while because the model artifact is large.",
+          "warn"
+        );
+      });
+    }
+
+    if (renderFullTreeImageButton && treeImage) {
+      renderFullTreeImageButton.addEventListener("click", () => {
+        treeImage.src = `${window.API.baseUrl}/api/model/tree-graph.png?maxDepth=full&ts=${Date.now()}`;
+        window.setMessage(
+          "modelTreeStatus",
+          "Rendering the full PNG. This can be very slow or too large to view for deep Random Forest trees.",
+          "warn"
+        );
+      });
+    }
+  }
+
   function render() {
     const panel = document.getElementById("modelInfoPanel");
     const payload = window.AppState.modelInfo || {};
@@ -184,8 +174,21 @@
         ${metric("Train rows", metadata.dataProfile?.trainRows || latestHistory.dataProfile?.trainRows)}
       </div>
       <div class="detail-section">
-        <h3>Accuracy History</h3>
-        <canvas id="modelAccuracyChart" class="history-chart"></canvas>
+        <h3>Random Forest Tree Preview</h3>
+        <div class="button-row tree-actions">
+          <button id="loadFullTreeTextButton" class="secondary-button">Show Whole Tree Text</button>
+          <button id="renderFullTreeImageButton" class="secondary-button">Try Full PNG</button>
+        </div>
+        <div id="modelTreeStatus" class="status-message">Loading tree preview...</div>
+        <div class="model-plot-image-wrap">
+          <img
+            id="modelTreeGraphImage"
+            class="model-plot-image"
+            alt="Random Forest decision tree preview"
+          >
+        </div>
+        <div id="modelTreeTextWrap" class="model-tree-text-wrap" hidden></div>
+        <p class="muted-note">Preview uses one estimator from the saved forest. The full text view exports every node; the full PNG option is experimental for very deep trees.</p>
       </div>
       <div class="detail-section">
         <h3>Latest Confusion Matrix</h3>
@@ -215,7 +218,7 @@
         <h3>Limitations</h3>
         <p>${window.escapeHtml(metadata.notes || "Train a multiclass model to replace the legacy binary DDoS-vs-BENIGN fallback.")}</p>
       </div>`;
-    drawHistoryChart(history);
+    bindTreeControls();
   }
 
   window.ModelInfo = { render };

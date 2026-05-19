@@ -19,6 +19,22 @@
     liveAlerts: []
   };
 
+  window.applyTheme = function applyTheme(theme) {
+    const resolved = theme === "light" ? "light" : "dark";
+    document.body.dataset.theme = resolved;
+    localStorage.setItem("ana-theme", resolved);
+  };
+
+  window.applyZoom = async function applyZoom(zoomLevel) {
+    const safeZoom = Math.max(50, Math.min(Number(zoomLevel) || 100, 200));
+    localStorage.setItem("ana-zoom-level", String(safeZoom));
+    if (window.aiNetworkAnalyzer?.zoomControls) {
+      return window.aiNetworkAnalyzer.zoomControls.setLevel(safeZoom);
+    }
+    document.documentElement.style.zoom = `${safeZoom}%`;
+    return safeZoom;
+  };
+
   window.escapeHtml = function escapeHtml(value) {
     return String(value ?? "")
       .replace(/&/g, "&amp;")
@@ -63,6 +79,14 @@
     const [title, subtitle] = titles[viewName] || titles.dashboard;
     document.getElementById("viewTitle").textContent = title;
     document.getElementById("viewSubtitle").textContent = subtitle;
+    if (viewName === "dashboard") {
+      requestAnimationFrame(() => window.Dashboard.redrawCharts());
+    }
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById("loadingOverlay");
+    if (overlay) overlay.classList.add("hidden");
   }
 
   async function refreshHealth() {
@@ -102,6 +126,8 @@
     window.Alerts.render(window.AppState.alerts);
     window.ModelInfo.render();
     window.Settings.render();
+    window.applyTheme(window.AppState.settings?.theme || localStorage.getItem("ana-theme") || "dark");
+    window.applyZoom(window.AppState.settings?.zoomLevel || localStorage.getItem("ana-zoom-level") || 100);
   }
 
   function connectEvents() {
@@ -111,6 +137,7 @@
       if (payload.sourceType === "live" || payload.source_type === "live") {
         window.LiveCapture.appendAlerts(payload.alerts || [], payload.summary || {});
       }
+      notifyForAlerts(payload.alerts || []);
       refreshData();
     });
     events.addEventListener("capture_status", (event) => {
@@ -121,7 +148,32 @@
     });
   }
 
+  async function notifyForAlerts(alerts) {
+    const settings = window.AppState.settings || {};
+    if (!settings.systemNotificationsEnabled || !alerts.length || !("Notification" in window)) return;
+
+    let permission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") return;
+
+    const relevant = settings.notifyHighSeverityOnly
+      ? alerts.filter((alert) => ["High", "Critical"].includes(alert.threat?.severity))
+      : alerts;
+    if (!relevant.length) return;
+
+    const first = relevant[0];
+    const countText = relevant.length > 1 ? `${relevant.length} alerts detected` : "Network alert detected";
+    new Notification(countText, {
+      body: `${first.ml?.prediction || "Unknown"} | ${first.threat?.severity || "Medium"} | ${window.formatPercent(first.ml?.confidence)}`,
+      silent: false
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
+    window.applyTheme(localStorage.getItem("ana-theme") || "dark");
+    window.applyZoom(localStorage.getItem("ana-zoom-level") || 100);
     document.querySelectorAll(".nav-item").forEach((item) => {
       item.addEventListener("click", () => setView(item.dataset.view));
     });
@@ -135,7 +187,9 @@
     window.PcapAnalysis.bind();
     window.Alerts.bind();
     window.Settings.bind();
-    refreshData();
+    refreshData().finally(() => {
+      setTimeout(hideLoading, 220);
+    });
     connectEvents();
   });
 })();

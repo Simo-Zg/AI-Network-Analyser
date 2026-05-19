@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const http = require("http");
 const env = require("./config/env");
 const { connectDatabase } = require("./config/database");
 const logger = require("./utils/logger");
@@ -62,8 +63,27 @@ async function startServer(options = {}) {
   });
 }
 
+function checkExistingServer(port) {
+  return new Promise((resolve) => {
+    const request = http.get(`http://127.0.0.1:${port}/api/health`, (response) => {
+      response.resume();
+      resolve(response.statusCode < 500);
+    });
+    request.on("error", () => resolve(false));
+    request.setTimeout(1500, () => {
+      request.destroy();
+      resolve(false);
+    });
+  });
+}
+
 if (require.main === module) {
-  startServer().catch((error) => {
+  startServer().catch(async (error) => {
+    if (error.code === "EADDRINUSE" && (await checkExistingServer(env.port))) {
+      logger.warn(`API server already running on http://localhost:${env.port}; reusing existing instance`);
+      setInterval(() => {}, 60 * 60 * 1000);
+      return;
+    }
     logger.error("Failed to start API server", { error: error.message });
     process.exit(1);
   });
@@ -71,5 +91,6 @@ if (require.main === module) {
 
 module.exports = {
   createApp,
-  startServer
+  startServer,
+  checkExistingServer
 };
