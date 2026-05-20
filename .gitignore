@@ -21,3 +21,4 @@ ml_service/models/*.png
 ml_service/models/*.txt
 backend/*.pkl
 *.zip
+docs/

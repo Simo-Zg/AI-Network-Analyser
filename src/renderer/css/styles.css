@@ -399,9 +399,12 @@ select {
   font-weight: 650;
 }
 
+#saveSettingsButton {
+  margin-top: 10px;
+}
+
 .primary-button {
   background: var(--accent);
-  margin-top: 10px;
 }
 
 .secondary-button,
@@ -1062,13 +1065,18 @@ pre {
   transform: translateX(30px);
 }
 /*End*/
-
+/**********/
 .toggle-switch {
+  --switch-width: 3.5em;
+  --switch-height: 2em;
+  --knob-size: 1.4em;
+  --switch-padding: 0.25em;
+
   font-size: 17px;
   position: relative;
   display: inline-block;
-  width: 3.5em;
-  height: 2em;
+  width: var(--switch-width);
+  height: var(--switch-height);
   flex: 0 0 auto;
 }
 
@@ -1076,50 +1084,50 @@ pre {
   opacity: 0;
   width: 0;
   height: 0;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  position: absolute;
 }
 
-/* The slider track */
 .toggle-slider {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  /* Matches the background of the container row, or use var(--bg) */
-  background-color: var(--panel-2); 
+  background-color: var(--panel);
   border: 1px solid var(--border);
   transition: 0.4s;
-  border-radius: 30px;
+  border-radius: 999px;
 }
 
-/* The moving circular knob */
 .toggle-slider::before {
   position: absolute;
   content: "";
-  height: 1.4em;
-  width: 1.4em;
-  border-radius: 20px;
-  left: 0.27em;
-  bottom: 0.25em;
-  /* Uses your theme's muted text color variable for the inactive circle state */
+  width: var(--knob-size);
+  height: var(--knob-size);
+  top: 50%;
+  left: var(--switch-padding);
+  transform: translateY(-50%);
+  border-radius: 50%;
   background-color: var(--muted); 
   transition: 0.4s;
 }
 
-/* Activated State */
 .toggle-switch input:checked + .toggle-slider {
-  /* Dynamically changes to your theme's accent color (blue in both dark/light) */
   background-color: var(--accent);
   border-color: var(--accent);
 }
 
-.toggle-switch input:focus + .toggle-slider {
-  box-shadow: 0 0 1px var(--accent);
-}
 
-/* White knob when active */
 .toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(1.4em);
+  left: auto;
+  right: var(--switch-padding);
   background-color: #ffffff;
 }
+
+/**********/
 
 @keyframes loading-slide {
   from { transform: translateX(-28%); }
@@ -1131,19 +1139,6 @@ pre {
   100% { transform: translateX(26px) rotate(360deg); }
 }
 
-@keyframes cloud-move {
-  0% { transform: translateX(0); }
-  40% { transform: translateX(4px); }
-  80% { transform: translateX(-4px); }
-  100% { transform: translateX(0); }
-}
-
-@keyframes star-twinkle {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.2); }
-  80% { transform: scale(0.8); }
-  100% { transform: scale(1); }
-}
 
 @keyframes view-enter {
   from {
