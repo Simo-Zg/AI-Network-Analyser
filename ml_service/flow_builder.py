@@ -137,6 +137,55 @@ class FlowBuilder:
         return [flow.to_features() for flow in self.flows.values()]
 
 
+def _packet_candidates(packet) -> List:
+    candidates = [packet]
+    try:
+        from scapy.layers.inet import IP
+        from scapy.layers.inet6 import IPv6
+        from scapy.layers.l2 import Ether
+    except Exception:
+        return candidates
+
+    try:
+        if IP in packet or IPv6 in packet:
+            return candidates
+    except Exception:
+        pass
+
+    try:
+        raw_packet = bytes(packet)
+    except Exception:
+        raw_packet = b""
+
+    if not raw_packet:
+        return candidates
+
+    # Windows/Npcap can occasionally hand Scapy a generic Packet when the
+    # datalink type was not guessed cleanly. Try the common decoders before
+    # giving up so live capture does not silently skip usable IP traffic.
+    decode_attempts = [
+        (Ether, raw_packet),
+        (IP, raw_packet),
+        (IPv6, raw_packet),
+    ]
+    if len(raw_packet) > 4:
+        decode_attempts.extend(
+            [
+                (IP, raw_packet[4:]),
+                (IPv6, raw_packet[4:]),
+            ]
+        )
+
+    for decoder, payload in decode_attempts:
+        try:
+            decoded = decoder(payload)
+            if IP in decoded or IPv6 in decoded:
+                candidates.append(decoded)
+        except Exception:
+            continue
+    return candidates
+
+
 def packet_to_flow_info(packet) -> Optional[Dict]:
     try:
         from scapy.layers.inet import IP, TCP, UDP, ICMP
@@ -145,10 +194,16 @@ def packet_to_flow_info(packet) -> Optional[Dict]:
         return None
 
     ip_layer = None
-    if IP in packet:
-        ip_layer = packet[IP]
-    elif IPv6 in packet:
-        ip_layer = packet[IPv6]
+    decoded_packet = packet
+    for candidate in _packet_candidates(packet):
+        if IP in candidate:
+            ip_layer = candidate[IP]
+            decoded_packet = candidate
+            break
+        if IPv6 in candidate:
+            ip_layer = candidate[IPv6]
+            decoded_packet = candidate
+            break
     if ip_layer is None:
         return None
 
@@ -157,20 +212,20 @@ def packet_to_flow_info(packet) -> Optional[Dict]:
     source_port = 0
     destination_port = 0
     flags = ""
-    if TCP in packet:
-        tcp = packet[TCP]
+    if TCP in decoded_packet:
+        tcp = decoded_packet[TCP]
         source_port = int(tcp.sport)
         destination_port = int(tcp.dport)
         flags = str(tcp.flags)
         protocol_number = 6
         protocol_name = "TCP"
-    elif UDP in packet:
-        udp = packet[UDP]
+    elif UDP in decoded_packet:
+        udp = decoded_packet[UDP]
         source_port = int(udp.sport)
         destination_port = int(udp.dport)
         protocol_number = 17
         protocol_name = "UDP"
-    elif ICMP in packet:
+    elif ICMP in decoded_packet:
         protocol_number = 1
         protocol_name = "ICMP"
 

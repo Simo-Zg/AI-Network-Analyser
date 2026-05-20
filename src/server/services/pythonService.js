@@ -9,6 +9,7 @@ let captureState = {
   running: false,
   sessionId: null,
   interfaceName: "",
+  captureFilter: "",
   startedAt: null,
   lastEventAt: null,
   error: null
@@ -267,6 +268,10 @@ async function analyzePcap(filePath) {
   return runJsonScript("predict_pcap.py", ["--input", filePath], { timeoutMs: 180000 });
 }
 
+async function listCaptureInterfaces() {
+  return runJsonScript("capture_worker.py", ["--list-interfaces"], { timeoutMs: 30000 });
+}
+
 async function trainModel({
   dataDir,
   labelMode = "grouped",
@@ -316,6 +321,21 @@ function startCapture(options, onEvent) {
   if (options.interfaceName) {
     args.push("--interface", options.interfaceName);
   }
+  if (options.captureFilter) {
+    args.push("--filter", options.captureFilter);
+  }
+  if (options.dosFlowThreshold) {
+    args.push("--dos-flow-threshold", String(options.dosFlowThreshold));
+  }
+  if (options.dosFlowRateThreshold) {
+    args.push("--dos-flow-rate-threshold", String(options.dosFlowRateThreshold));
+  }
+  if (options.dosSynThreshold) {
+    args.push("--dos-syn-threshold", String(options.dosSynThreshold));
+  }
+  if (options.dosSynRateThreshold) {
+    args.push("--dos-syn-rate-threshold", String(options.dosSynRateThreshold));
+  }
 
   captureProcess = spawn(env.pythonExecutable, args, {
     cwd: env.pythonMlServiceDir,
@@ -327,6 +347,7 @@ function startCapture(options, onEvent) {
     running: true,
     sessionId: options.sessionId,
     interfaceName: options.interfaceName || "",
+    captureFilter: options.captureFilter || "",
     startedAt: new Date().toISOString(),
     lastEventAt: null,
     error: null
@@ -404,6 +425,7 @@ module.exports = {
   exportTreeText,
   analyzeCsv,
   analyzePcap,
+  listCaptureInterfaces,
   trainModel,
   startCapture,
   stopCapture,

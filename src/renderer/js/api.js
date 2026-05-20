@@ -70,6 +70,7 @@
     startCapture: (body) => request("/api/capture/start", { method: "POST", body }),
     stopCapture: () => request("/api/capture/stop", { method: "POST" }),
     captureStatus: () => request("/api/capture/status"),
+    captureInterfaces: () => request("/api/capture/interfaces"),
     captureSessions: () => request("/api/capture/sessions"),
     getSettings: () => request("/api/settings"),
     saveSettings: (body) => request("/api/settings", { method: "POST", body })

@@ -77,6 +77,20 @@ PCAP extraction reconstructs flows from packet headers using source IP, destinat
 python capture_worker.py --interface "Wi-Fi" --window-seconds 5
 ```
 
+Discover exact adapter names and IPs:
+
+```bash
+python capture_worker.py --list-interfaces
+```
+
+For focused lab tests:
+
+```bash
+python capture_worker.py --interface "Wi-Fi" --window-seconds 5 --filter "tcp port 5000"
+```
+
+Live capture applies an aggregate DoS heuristic after Random Forest prediction. It flags windows where many flows or SYN packets target the same destination service, which helps with `ab` and SYN-flood lab traffic that can look benign per individual flow. Heuristic alerts are marked as `RandomForest_IDS + LiveWindowHeuristic`.
+
 The worker streams JSON lines:
 
 ```json
@@ -85,7 +99,7 @@ The worker streams JSON lines:
 {"type":"capture_status","status":"stopped"}
 ```
 
-Live capture may require root/administrator privileges and Npcap on Windows.
+Live capture may require root/administrator privileges and Npcap on Windows. If traffic is generated from another machine, run capture on the target host or on a monitor/SPAN position. A normal Wi-Fi client usually cannot capture another client's unicast traffic. For localhost traffic, use the Npcap Loopback Adapter.
 
 ## Legacy Fallback
 

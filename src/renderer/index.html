@@ -100,10 +100,12 @@
       <section id="live" class="view">
         <div class="panel form-panel">
           <div class="form-grid">
-            <label>Interface<input id="captureInterface" placeholder="Wi-Fi, Ethernet, eth0"></label>
+            <label>Interface<input id="captureInterface" list="captureInterfaceOptions" placeholder="Select or type an adapter name"><datalist id="captureInterfaceOptions"></datalist></label>
             <label>Window seconds<input id="captureWindow" type="number" min="1" value="5"></label>
+            <label>Capture filter<input id="captureFilter" placeholder="Optional, for example: tcp port 5000"></label>
           </div>
           <div class="button-row">
+            <button id="refreshInterfacesButton" class="secondary-button">Refresh Interfaces</button>
             <button id="startCaptureButton" class="primary-button">Start Capture</button>
             <button id="stopCaptureButton" class="danger-button">Stop Capture</button>
           </div>
@@ -226,7 +228,7 @@
         <section class="panel form-panel settings-panel">
           <h2>Analysis And Integrations</h2>
           <div class="form-grid">
-            <label>OpenRouter model<input id="settingModel" placeholder="anthropic/claude-3.5-sonnet"></label>
+            <label>OpenRouter model (.env)<input id="settingModel" placeholder="openai/gpt-oss-120b:free" readonly></label>
             <label>AI privacy mode<select id="settingPrivacy"><option value="strict">strict</option><option value="redacted">redacted</option><option value="lab">lab</option></select></label>
             <label>Capture window seconds<input id="settingWindow" type="number" min="1"></label>
             <label>Default interface<input id="settingInterface" placeholder="Wi-Fi, Ethernet, eth0"></label>

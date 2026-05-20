@@ -28,6 +28,11 @@ const env = {
   pythonMlServiceDir: path.resolve(projectRoot, process.env.PYTHON_ML_SERVICE_DIR || "./ml_service"),
   captureWindowSeconds: parseNumber(process.env.CAPTURE_WINDOW_SECONDS, 5),
   captureInterface: process.env.CAPTURE_INTERFACE || "",
+  captureFilter: process.env.CAPTURE_FILTER || "",
+  liveDosFlowThreshold: parseNumber(process.env.LIVE_DOS_FLOW_THRESHOLD, 80),
+  liveDosFlowRateThreshold: parseNumber(process.env.LIVE_DOS_FLOW_RATE_THRESHOLD, 15),
+  liveDosSynThreshold: parseNumber(process.env.LIVE_DOS_SYN_THRESHOLD, 80),
+  liveDosSynRateThreshold: parseNumber(process.env.LIVE_DOS_SYN_RATE_THRESHOLD, 15),
   siemExportDir: path.resolve(projectRoot, process.env.SIEM_EXPORT_DIR || "./exports"),
   uploadDir: path.resolve(projectRoot, "uploads")
 };

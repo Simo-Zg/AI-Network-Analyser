@@ -17,7 +17,9 @@ def extract_features_from_packets(packets: Iterable) -> Tuple[pd.DataFrame, list
     ]
     builder = FlowBuilder()
     skipped = 0
+    packet_count = 0
     for packet in packets:
+        packet_count += 1
         info = packet_to_flow_info(packet)
         if info is None:
             skipped += 1
@@ -25,6 +27,14 @@ def extract_features_from_packets(packets: Iterable) -> Tuple[pd.DataFrame, list
         builder.add_packet(info)
 
     records = builder.to_records()
+    if packet_count == 0:
+        warnings.append(
+            "No packets were captured in this window. Check the selected interface, Npcap/admin privileges, and whether the traffic is on loopback."
+        )
+    elif not records:
+        warnings.append(
+            f"Captured {packet_count} packets, but none could be reconstructed into supported IP flows."
+        )
     if skipped:
         warnings.append(f"Skipped {skipped} non-IP or unsupported packets.")
     return pd.DataFrame(records), warnings

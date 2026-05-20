@@ -26,16 +26,16 @@ router.post("/:id/explain", async (req, res, next) => {
   try {
     const alert = await Alert.findOne(findAlertQuery(req.params.id));
     if (!alert) return res.status(404).json({ error: "Alert not found" });
+    const model = openRouterService.resolveOpenRouterModel();
 
     alert.aiExplanation = {
       status: "requested",
       provider: "OpenRouter",
-      model: req.body.model
+      model
     };
     await alert.save();
 
     try {
-      const model = req.body.model || (await settingValue("openRouterModel", undefined));
       const privacyMode = req.body.privacyMode || (await settingValue("aiPrivacyMode", undefined));
       const explanation = await openRouterService.explainAlert(alert, {
         model,
@@ -48,19 +48,21 @@ router.post("/:id/explain", async (req, res, next) => {
       alert.aiExplanation = {
         status: "error",
         provider: "OpenRouter",
-        model: req.body.model,
+        model: error.model || model,
         generatedAt: new Date(),
         error: error.message,
         content: {
           code: error.code || "AI_EXPLANATION_FAILED",
           providerMessage: error.providerMessage,
-          retryAfter: error.retryAfter
+          retryAfter: error.retryAfter,
+          model: error.model || model
         }
       };
       await alert.save();
       return res.status(error.status || 502).json({
         error: error.message,
         code: error.code || "AI_EXPLANATION_FAILED",
+        model: error.model || model,
         retryAfter: error.retryAfter,
         explanation: alert.aiExplanation
       });

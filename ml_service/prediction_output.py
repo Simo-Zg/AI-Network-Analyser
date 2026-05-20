@@ -13,7 +13,7 @@ def class_distribution(predictions):
     return dict(Counter(str(item["prediction"]) for item in predictions))
 
 
-def threat_for_prediction(prediction, confidence):
+def threat_for_prediction(prediction, confidence, detection_source=None):
     label = str(prediction)
     lower = label.lower()
     if "heartbleed" in lower or "infiltration" in lower:
@@ -45,6 +45,12 @@ def threat_for_prediction(prediction, confidence):
     return {
         "category": category,
         "severity": severity,
+        "description": (
+            "Live-window aggregate heuristic flagged this service as possible DoS; "
+            "validate against packet capture and server logs."
+            if detection_source == "live_window_heuristic"
+            else f"Flow classified as {label} by the current IDS model."
+        ),
     }
 
 
@@ -118,15 +124,19 @@ def alert_from_prediction(row, prediction, model_info, source_type, session_id=N
             "duration_ms": float(duration_ms or 0),
         },
         "ml": {
-            "model_name": model_info["name"],
-            "model_version": model_info["version"],
+            "model_name": prediction.get("model_name", model_info["name"]),
+            "model_version": prediction.get("model_version", model_info["version"]),
             "prediction": prediction["prediction"],
             "confidence": confidence,
             "probabilities": prediction["probabilities"],
             "top_features": prediction["top_features"],
             "feature_values": prediction["feature_values"],
         },
-        "threat": threat_for_prediction(prediction["prediction"], confidence),
+        "threat": threat_for_prediction(
+            prediction["prediction"],
+            confidence,
+            detection_source=prediction.get("detection_source"),
+        ),
         "source_type": source_type,
         "session_id": session_id,
     }

@@ -71,6 +71,12 @@ OPENROUTER_API_KEY=
 AI_PRIVACY_MODE=redacted
 PYTHON_EXECUTABLE=python
 PYTHON_ML_SERVICE_DIR=./ml_service
+CAPTURE_INTERFACE=
+CAPTURE_FILTER=
+LIVE_DOS_FLOW_THRESHOLD=80
+LIVE_DOS_FLOW_RATE_THRESHOLD=15
+LIVE_DOS_SYN_THRESHOLD=80
+LIVE_DOS_SYN_RATE_THRESHOLD=15
 SIEM_EXPORT_DIR=./exports
 ```
 
@@ -245,7 +251,30 @@ Live capture starts a Python worker:
 python ml_service/capture_worker.py --interface "Wi-Fi" --window-seconds 5
 ```
 
+List the exact Scapy/Npcap interface names:
+
+```bash
+python ml_service/capture_worker.py --list-interfaces
+```
+
+For focused lab tests, add a BPF capture filter:
+
+```bash
+python ml_service/capture_worker.py --interface "Wi-Fi" --window-seconds 5 --filter "tcp port 5000"
+```
+
+Live capture also applies an aggregate DoS heuristic after Random Forest inference. This catches lab patterns where many short flows or SYN packets target the same service in one capture window, even when each individual flow is classified as `BENIGN` by the RF model. The alert is marked as `RandomForest_IDS + LiveWindowHeuristic` so it is clear that this is not a retrained model result. Defaults can be adjusted with:
+
+```text
+LIVE_DOS_FLOW_THRESHOLD=80
+LIVE_DOS_FLOW_RATE_THRESHOLD=15
+LIVE_DOS_SYN_THRESHOLD=80
+LIVE_DOS_SYN_RATE_THRESHOLD=15
+```
+
 On Windows, live capture may require Npcap and administrator privileges. CSV and PCAP analysis work even if live capture is unavailable.
+
+If a DoS test is generated from another host on the same LAN, the analyzer must run on the machine receiving the traffic or on a true monitor/SPAN position. A normal third Wi-Fi client usually cannot see another client's unicast traffic. If the server is local on `127.0.0.1`, use the Npcap Loopback Adapter. If the server listens on a LAN IP, select the adapter whose IP matches that LAN address.
 
 ## OpenRouter AI Explanations
 
@@ -308,6 +337,7 @@ No OpenRouter key or live packet capture is required for tests.
 - App using legacy model: train a new multiclass model.
 - CSV prediction fails: check the feature list in `model_metadata.json`.
 - PCAP returns no flows: verify the file contains IP packets and Scapy can read it.
+- Live capture returns empty windows: click Refresh Interfaces and select the adapter whose IP matches the target server. For a port-5000 lab, try capture filter `tcp port 5000`. Confirm the attack target IP matches the server IP shown on that adapter.
 - Live capture fails: install Npcap on Windows and use elevated privileges.
 - AI explanations unavailable: set `OPENROUTER_API_KEY` and restart the backend.
 
@@ -315,6 +345,6 @@ No OpenRouter key or live packet capture is required for tests.
 
 - Background training jobs with progress events.
 - Richer CICFlowMeter-compatible PCAP extraction.
-- Interface discovery per OS.
+- Better interface discovery and automatic adapter recommendation.
 - Model drift tracking and comparison.
 - Webhook SIEM export.

@@ -121,8 +121,14 @@
       return `<div class="ai-explanation empty-state">AI explanation has not been requested.</div>`;
     }
     if (aiExplanation.status === "error") {
-      const details = aiExplanation.content?.providerMessage
-        ? `<pre class="ai-provider-message">${window.escapeHtml(aiExplanation.content.providerMessage)}</pre>`
+      const errorDetails = {
+        model: aiExplanation.model || aiExplanation.content?.model,
+        providerMessage: aiExplanation.content?.providerMessage,
+        retryAfter: aiExplanation.content?.retryAfter,
+        code: aiExplanation.content?.code
+      };
+      const details = errorDetails.providerMessage || errorDetails.model
+        ? `<pre class="ai-provider-message">${window.escapeHtml(JSON.stringify(errorDetails, null, 2))}</pre>`
         : "";
       return `
         <div class="ai-explanation ai-explanation-error">

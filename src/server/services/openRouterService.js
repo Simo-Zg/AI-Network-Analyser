@@ -62,7 +62,15 @@ function parseJsonOrText(content) {
   }
 }
 
-function normalizeOpenRouterError(error) {
+function cleanConfiguredValue(value) {
+  return String(value || "").trim().replace(/^["']|["']$/g, "");
+}
+
+function resolveOpenRouterModel() {
+  return cleanConfiguredValue(env.openRouterModel);
+}
+
+function normalizeOpenRouterError(error, context = {}) {
   const status = error.response?.status || error.status || 502;
   const retryAfter = error.response?.headers?.["retry-after"];
   const providerMessage =
@@ -80,6 +88,7 @@ function normalizeOpenRouterError(error) {
     normalized.code = "OPENROUTER_RATE_LIMITED";
     normalized.providerMessage = String(providerMessage || "Rate limited");
     normalized.retryAfter = retryAfter;
+    normalized.model = context.model;
     return normalized;
   }
 
@@ -88,6 +97,7 @@ function normalizeOpenRouterError(error) {
     normalized.status = status;
     normalized.code = "OPENROUTER_AUTH_ERROR";
     normalized.providerMessage = String(providerMessage || "Authentication failed");
+    normalized.model = context.model;
     return normalized;
   }
 
@@ -95,12 +105,13 @@ function normalizeOpenRouterError(error) {
   normalized.status = status;
   normalized.code = "OPENROUTER_REQUEST_FAILED";
   normalized.providerMessage = String(providerMessage || error.message || "OpenRouter request failed");
+  normalized.model = context.model;
   return normalized;
 }
 
 async function explainAlert(alert, options = {}) {
   const apiKey = options.apiKey ?? env.openRouterApiKey;
-  const model = options.model || env.openRouterModel;
+  const model = cleanConfiguredValue(options.model || resolveOpenRouterModel());
   const baseUrl = options.baseUrl || env.openRouterBaseUrl;
   const privacyMode = options.privacyMode || env.aiPrivacyMode;
 
@@ -131,7 +142,7 @@ async function explainAlert(alert, options = {}) {
       }
     );
   } catch (error) {
-    throw normalizeOpenRouterError(error);
+    throw normalizeOpenRouterError(error, { model });
   }
 
   const text = response.data?.choices?.[0]?.message?.content || "";
@@ -148,5 +159,6 @@ module.exports = {
   buildPrompt,
   explainAlert,
   parseJsonOrText,
-  normalizeOpenRouterError
+  normalizeOpenRouterError,
+  resolveOpenRouterModel
 };

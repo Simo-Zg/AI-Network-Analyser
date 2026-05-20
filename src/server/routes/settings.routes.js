@@ -7,7 +7,6 @@ const router = express.Router();
 let memorySettings = {};
 
 const allowedKeys = [
-  "openRouterModel",
   "aiPrivacyMode",
   "captureWindowSeconds",
   "captureInterface",
@@ -36,7 +35,10 @@ function defaultSettings() {
 }
 
 function applyStoredSettings(settings, stored) {
-  for (const item of stored) settings[item.key] = item.value;
+  for (const item of stored) {
+    if (item.key === "openRouterModel") continue;
+    settings[item.key] = item.value;
+  }
   return settings;
 }
 

@@ -23,14 +23,13 @@
     document.getElementById("settingNotificationsEnabled").checked = Boolean(settings.systemNotificationsEnabled);
     document.getElementById("settingNotifyHighSeverityOnly").checked = settings.notifyHighSeverityOnly !== false;
     document.getElementById("settingsStatus").textContent = settings.openRouterConfigured
-      ? "OpenRouter API key is configured in the backend environment."
+      ? "OpenRouter API key is configured in the backend environment. The OpenRouter model is read from .env."
       : "AI explanation unavailable: missing API key";
   }
 
   async function save() {
     const saveButton = document.getElementById("saveSettingsButton");
     const body = {
-      openRouterModel: document.getElementById("settingModel").value.trim(),
       aiPrivacyMode: document.getElementById("settingPrivacy").value,
       captureWindowSeconds: Number(document.getElementById("settingWindow").value || 5),
       captureInterface: document.getElementById("settingInterface").value.trim(),

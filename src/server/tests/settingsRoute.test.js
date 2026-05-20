@@ -8,6 +8,7 @@ test("POST /api/settings saves settings when MongoDB is unavailable", async () =
     .send({
       theme: "light",
       captureWindowSeconds: 9,
+      openRouterModel: "stale/model",
       zoomLevel: 125,
       systemNotificationsEnabled: true,
       ignoredKey: "should not be saved"
@@ -18,5 +19,6 @@ test("POST /api/settings saves settings when MongoDB is unavailable", async () =
   expect(response.body.settings.captureWindowSeconds).toBe(9);
   expect(response.body.settings.zoomLevel).toBe(125);
   expect(response.body.settings.systemNotificationsEnabled).toBe(true);
+  expect(response.body.settings.openRouterModel).not.toBe("stale/model");
   expect(response.body.settings.ignoredKey).toBeUndefined();
 });

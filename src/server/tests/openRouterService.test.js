@@ -36,10 +36,15 @@ test("OpenRouter 429 is normalized into a clear rate-limit error", () => {
       headers: { "retry-after": "60" },
       data: { error: { message: "Rate limit exceeded" } }
     }
-  });
+  }, { model: "openai/gpt-oss-120b:free" });
 
   expect(normalized.status).toBe(429);
   expect(normalized.code).toBe("OPENROUTER_RATE_LIMITED");
   expect(normalized.message).toContain("rate limit or quota");
   expect(normalized.providerMessage).toBe("Rate limit exceeded");
+  expect(normalized.model).toBe("openai/gpt-oss-120b:free");
+});
+
+test("OpenRouter model is resolved from environment configuration", () => {
+  expect(openRouterService.resolveOpenRouterModel()).toBeTruthy();
 });

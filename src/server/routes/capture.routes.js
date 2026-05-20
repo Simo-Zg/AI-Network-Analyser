@@ -13,6 +13,11 @@ router.post("/start", async (req, res, next) => {
     const sessionId = makeSessionId();
     const interfaceName = req.body.interfaceName || req.body.interface || env.captureInterface || "";
     const windowSeconds = Number(req.body.windowSeconds || env.captureWindowSeconds || 5);
+    const captureFilter = String(req.body.captureFilter || req.body.filter || env.captureFilter || "").trim();
+    const dosFlowThreshold = Number(req.body.dosFlowThreshold || env.liveDosFlowThreshold);
+    const dosFlowRateThreshold = Number(req.body.dosFlowRateThreshold || env.liveDosFlowRateThreshold);
+    const dosSynThreshold = Number(req.body.dosSynThreshold || env.liveDosSynThreshold);
+    const dosSynRateThreshold = Number(req.body.dosSynRateThreshold || env.liveDosSynRateThreshold);
 
     try {
       await CaptureSession.create({
@@ -30,7 +35,12 @@ router.post("/start", async (req, res, next) => {
       {
         sessionId,
         interfaceName,
-        windowSeconds
+        windowSeconds,
+        captureFilter,
+        dosFlowThreshold,
+        dosFlowRateThreshold,
+        dosSynThreshold,
+        dosSynRateThreshold
       },
       async (event) => {
         eventStream.broadcast(event.type || "capture_event", event);
@@ -93,6 +103,14 @@ router.post("/stop", async (req, res, next) => {
 
 router.get("/status", (req, res) => {
   res.json(pythonService.getCaptureStatus());
+});
+
+router.get("/interfaces", async (_req, res, next) => {
+  try {
+    res.json(await pythonService.listCaptureInterfaces());
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.get("/sessions", async (req, res, next) => {

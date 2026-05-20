@@ -135,7 +135,7 @@
     events.addEventListener("prediction_batch", (event) => {
       const payload = JSON.parse(event.data);
       if (payload.sourceType === "live" || payload.source_type === "live") {
-        window.LiveCapture.appendAlerts(payload.alerts || [], payload.summary || {});
+        window.LiveCapture.appendAlerts(payload.alerts || [], payload.summary || {}, payload.packets_captured);
       }
       notifyForAlerts(payload.alerts || []);
       refreshData();
